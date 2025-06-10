@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marine Life ID - Wireframes</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .wireframe-container {
+            width: 375px;
+            height: 667px;
+            background: white;
+            border: 2px solid #333;
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .screen {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            background: white;
+            display: none;
+            flex-direction: column;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        .header {
+            padding: 20px;
+            border-bottom: 1px solid #ddd;
+            text-align: center;
+            background: #f8f9fa;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .upload-area {
+            border: 2px dashed #007bff;
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            background: #f8f9ff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            background: #e8f0ff;
+            border-color: #0056b3;
+        }
+
+        .upload-icon {
+            width: 60px;
+            height: 60px;
+            background: #007bff;
+            border-radius: 50%;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+
+        .image-preview {
+            width: 100%;
+            height: 200px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+        }
+
+        .result-card {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .confidence-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: #28a745;
+            transition: width 0.5s ease;
+        }
+
+        .species-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .scientific-name {
+            font-style: italic;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .nav-indicator {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ddd;
+            cursor: pointer;
+        }
+
+        .nav-dot.active {
+            background: #007bff;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: #007bff;
+        }
+
+        .wireframe-note {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ff6b35;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="wireframe-container">
+        <div class="wireframe-note">WIREFRAME</div>
+        
+        <!-- Screen 1: Home/Upload -->
+        <div class="screen active" id="screen1">
+            <div class="header">
+                <h1>Marine Life ID</h1>
+                <p>Identify sea creatures instantly</p>
+            </div>
+            <div class="content">
+                <div class="upload-area" onclick="showScreen(2)">
+                    <div class="upload-icon">📷</div>
+                    <h3>Upload or Take Photo</h3>
+                    <p>Tap to identify marine life</p>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="showScreen(2)">📷 Camera</button>
+                    <button class="btn btn-secondary" onclick="showScreen(2)">📁 Gallery</button>
+                </div>
+                <div style="margin-top: 30px; text-align: center; color: #666;">
+                    <p><strong>Recent Identifications</strong></p>
+                    <div style="display: flex; gap: 10px; margin-top: 15px; justify-content: center;">
+                        <div style="width: 60px; height: 60px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer;" onclick="showScreen(4)">🐠</div>
+                        <div style="width: 60px; height: 60px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer;" onclick="showScreen(4)">🦑</div>
+                        <div style="width: 60px; height: 60px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer;" onclick="showScreen(4)">🐙</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen 2: Image Preview -->
+        <div class="screen" id="screen2">
+            <button class="back-btn" onclick="showScreen(1)">← Back</button>
+            <div class="header">
+                <h1>Review Image</h1>
+                <p>Make sure the marine life is clearly visible</p>
+            </div>
+            <div class="content">
+                <div class="image-preview">
+                    <div style="text-align: center;">
+                        <div style="font-size: 40px; margin-bottom: 10px;">🐠</div>
+                        <p>Image Preview</p>
+                        <small>Captured marine creature</small>
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-secondary" onclick="showScreen(1)">Retake</button>
+                    <button class="btn btn-primary" onclick="showScreen(3)">Identify</button>
+                </div>
+                <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+                    <p><strong>Tips for better results:</strong></p>
+                    <ul style="margin-top: 10px; padding-left: 20px; color: #856404;">
+                        <li>Ensure good lighting</li>
+                        <li>Get close to the subject</li>
+                        <li>Include distinctive features</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen 3: Loading -->
+        <div class="screen" id="screen3">
+            <div class="header">
+                <h1>Analyzing Image</h1>
+                <p>Our AI is identifying the marine life...</p>
+            </div>
+            <div class="content">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <h3>Processing your image</h3>
+                    <p>This may take a few seconds</p>
+                </div>
+                <div style="margin-top: 40px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span>Analyzing features...</span>
+                        <span>✓</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span>Comparing to database...</span>
+                        <span>⏳</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span>Generating results...</span>
+                        <span>⏳</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen 4: Results -->
+        <div class="screen" id="screen4">
+            <button class="back-btn" onclick="showScreen(1)">← Home</button>
+            <div class="header">
+                <h1>Identification Results</h1>
+                <p>Here's what we found</p>
+            </div>
+            <div class="content">
+                <div class="result-card">
+                    <div class="species-name">Clownfish</div>
+                    <div class="scientific-name">Amphiprioninae</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Confidence:</span>
+                        <span><strong>94%</strong></span>
+                    </div>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill" style="width: 94%;"></div>
+                    </div>
+                    <p style="margin-top: 10px; color: #666; font-size: 14px;">
+                        Common orange and white striped fish found in coral reefs. Lives symbiotically with sea anemones.
+                    </p>
+                </div>
+
+                <div class="result-card">
+                    <div class="species-name">Anemonefish</div>
+                    <div class="scientific-name">Amphiprion ocellaris</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Confidence:</span>
+                        <span><strong>87%</strong></span>
+                    </div>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill" style="width: 87%;"></div>
+                    </div>
+                    <p style="margin-top: 10px; color: #666; font-size: 14px;">
+                        Also known as false percula clownfish. Distinguished by specific fin markings.
+                    </p>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-secondary" onclick="showScreen(1)">New Photo</button>
+                    <button class="btn btn-primary">Learn More</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation dots -->
+        <div class="nav-indicator">
+            <div class="nav-dot active" onclick="showScreen(1)"></div>
+            <div class="nav-dot" onclick="showScreen(2)"></div>
+            <div class="nav-dot" onclick="showScreen(3)"></div>
+            <div class="nav-dot" onclick="showScreen(4)"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentScreen = 1;
+
+        function showScreen(screenNumber) {
+            // Hide all screens
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            
+            // Show target screen
+            document.getElementById(`screen${screenNumber}`).classList.add('active');
+            
+            // Update navigation dots
+            document.querySelectorAll('.nav-dot').forEach((dot, index) => {
+                dot.classList.toggle('active', index + 1 === screenNumber);
+            });
+            
+            currentScreen = screenNumber;
+
+            // Auto-advance from loading screen
+            if (screenNumber === 3) {
+                setTimeout(() => {
+                    showScreen(4);
+                }, 3000);
+            }
+        }
+
+        // Initialize confidence bars animation
+        setTimeout(() => {
+            document.querySelectorAll('.confidence-fill').forEach(bar => {
+                const width = bar.style.width;
+                bar.style.width = '0%';
+                setTimeout(() => {
+                    bar.style.width = width;
+                }, 100);
+            });
+        }, 500);
+    </script>
+</body>
+</html>
