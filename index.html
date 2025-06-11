@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="zh"> <!-- Set default language to Chinese -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>海洋生物识别器</title> <!-- Default title in Chinese -->
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            /* Body acts as a flex container for centering app-container */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh; /* Ensure body takes full viewport height for alignment */
+            background: linear-gradient(to bottom right, #eff6ff, #bfdbfe); /* bg-gradient-to-br from-teal-50 to-blue-100 equivalent */
+        }
+
+        /* Initial margin for app-container on page load */
+        #app-container {
+            margin-top: 10vh; /* 10% of viewport height from the top */
+            transition: margin-top 0.3s ease-out; /* Smooth transition when margin changes */
+        }
+
+        /* Adjust margin when content is loaded/previewed */
+        #app-container.top-aligned {
+            margin-top: 2vh; /* Move closer to the top after upload */
+        }
+
+        /* Base styles for action buttons to ensure consistent size and centered content */
+        .action-button {
+            position: relative; /* For absolute positioning of spinner */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* Fixed height for consistency (h-12 in Tailwind is 48px) */
+            /* Tailwind classes h-12 and w-full are directly applied in HTML */
+            overflow: hidden; /* Hide overflowing text/spinner during transition */
+        }
+
+        /* Text span within the button */
+        .action-button .button-text {
+            position: absolute; /* Position text absolutely to keep button width stable */
+            left: 50%;
+            transform: translateX(-50%);
+            display: block; /* Ensure it's a block for opacity */
+            opacity: 1;
+            transition: opacity 0.2s ease-out; /* Smooth fade */
+            white-space: nowrap; /* Prevent text wrapping */
+        }
+
+        /* Spinner within the button */
+        .action-button .spinner {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.2s ease-out; /* Smooth fade */
+        }
+
+        /* State for when the button is loading */
+        .action-button.loading .button-text {
+            opacity: 0;
+        }
+
+        .action-button.loading .spinner {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-container" class="bg-white rounded-2xl shadow-xl p-8 max-w-5xl w-full my-8 border border-blue-200">
+        <h1 class="text-4xl font-extrabold text-center text-teal-700 mb-2">
+            海洋生物识别器
+        </h1>
+
+        <!-- Language Selection Flags -->
+        <div id="language-selector" class="flex flex-wrap justify-center gap-2 sm:gap-3 mb-2">
+            <!-- Buttons will be dynamically added here by JavaScript -->
+        </div>
+
+        <!-- Hidden File Input -->
+        <input
+            id="image-upload"
+            type="file"
+            accept="image/*"
+            class="hidden"
+        />
+
+        <!-- Combined Upload and Recognize Button -->
+        <button
+            id="upload-recognize-btn"
+            class="w-full h-12 rounded-xl text-white font-bold text-lg transition-all duration-300 transform bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-600 hover:to-blue-700 hover:scale-105 shadow-lg mb-2 action-button"
+        >
+            <span id="upload-recognize-text" class="button-text">上传照片并识别</span>
+            <svg id="upload-recognize-spinner" class="animate-spin h-5 w-5 text-white spinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        </button>
+
+        <!-- Image Preview -->
+        <div id="image-preview-container" class="p-4 border border-gray-200 rounded-lg bg-gray-50 hidden mt-2">
+            <img id="image-preview" src="" alt="Selected image preview" class="max-w-full h-auto rounded-lg shadow-md mx-auto" />
+        </div>
+
+        <!-- Error Message Display -->
+        <div id="error-message" class="p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg text-center hidden mt-2"></div>
+
+        <!-- Recognition Result Display -->
+        <div id="recognition-result-display" class="p-6 bg-blue-50 rounded-xl border border-blue-200 shadow-md hidden mt-2">
+            <div id="recognition-loading-text" class="flex flex-col items-center justify-center py-4 text-center hidden">
+                <svg class="animate-spin h-8 w-8 text-teal-500 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <!-- "Translating content..." text removed -->
+            </div>
+            <!-- Structured content for name, scientific name, and description -->
+            <div id="recognition-text-content">
+                <div id="marine-life-name" class="mb-2 text-gray-800"></div>
+                <div id="marine-life-scientific-name" class="mb-4 text-gray-800"></div>
+                <div id="marine-life-description" class="text-gray-800 leading-relaxed whitespace-pre-wrap"></div>
+            </div>
+
+            <!-- Button for More Images -->
+            <div class="flex flex-col sm:flex-row gap-4 mt-6">
+                <button
+                    id="more-images-btn"
+                    class="flex-1 h-12 rounded-xl text-white font-bold text-lg transition-all duration-300 transform bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 hover:scale-105 shadow-lg action-button"
+                >
+                    <span id="more-images-text" class="button-text">更多图片</span>
+                    <svg id="more-images-spinner" class="animate-spin h-5 w-5 text-white spinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Display Generated More Images -->
+        <div id="more-images-display" class="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-xl shadow-inner hidden mt-2">
+            <!-- Images will be dynamically added here by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Define translations for multiple languages
+        const translations = {
+            'zh': {
+                appName: '海洋生物识别器',
+                uploadButton: '上传照片并识别',
+                identifying: '识别中...',
+                moreImagesButton: '更多图片',
+                generatingImages: '正在生成图片...',
+                noImageSelected: '没有选择图片。',
+                apiError: 'API请求失败',
+                recognitionFailed: '识别失败',
+                noMarineLife: '未能识别出海洋生物。请尝试上传更清晰的图片。',
+                errorDuringRecognition: '识别过程中发生错误',
+                nameLabel: '名称',
+                scientificNameLabel: '学名',
+                errorAuthFailed: '认证失败，请刷新页面重试。',
+                errorFirebaseInit: 'Firebase初始化失败。',
+                languageName: '中文',
+                translatingContent: '正在翻译内容...', // Text removed from UI, but kept in translations for consistency
+            },
+            'en': {
+                appName: 'Marine Life Identifier',
+                uploadButton: 'Upload Photo & Identify',
+                identifying: 'Identifying...',
+                moreImagesButton: 'More Images',
+                generatingImages: 'Generating images...',
+                noImageSelected: 'No image selected.',
+                apiError: 'API request failed',
+                recognitionFailed: 'Recognition failed',
+                noMarineLife: 'Could not identify marine life. Please try a clearer image.',
+                errorDuringRecognition: 'Error during recognition',
+                nameLabel: 'Name',
+                scientificNameLabel: 'Scientific Name',
+                errorAuthFailed: 'Authentication failed, please refresh the page.',
+                errorFirebaseInit: 'Firebase initialization failed.',
+                languageName: 'English',
+                translatingContent: 'Translating content...',
+            },
+            'ja': {
+                appName: '海洋生物識別ツール',
+                uploadButton: '写真をアップロードして識別',
+                identifying: '識別中...',
+                moreImagesButton: 'その他の画像',
+                generatingImages: '画像を生成中...',
+                noImageSelected: '画像が選択されていません。',
+                apiError: 'APIリクエストに失敗しました',
+                recognitionFailed: '識別に失敗しました',
+                noMarineLife: '海洋生物を識別できませんでした。より鮮明な画像を試してください。',
+                errorDuringRecognition: '識別中にエラーが発生しました',
+                nameLabel: '名称',
+                scientificNameLabel: '学名',
+                errorAuthFailed: '認証に失敗しました。ページを再読み込みしてください。',
+                errorFirebaseInit: 'Firebaseの初期化に失敗しました。',
+                languageName: '日本語',
+                translatingContent: 'コンテンツを翻訳中...',
+            },
+            'de': {
+                appName: 'Meereslebewesen-Identifikator',
+                uploadButton: 'Foto hochladen & identifizieren',
+                identifying: 'Identifiziere...',
+                moreImagesButton: 'Weitere Bilder',
+                generatingImages: 'Bilder werden generiert...',
+                noImageSelected: 'Kein Bild ausgewählt.',
+                apiError: 'API-Anfrage fehlgeschlagen',
+                recognitionFailed: 'Erkennung fehlgeschlagen',
+                noMarineLife: 'Meereslebewesen konnte nicht identifiziert werden. Bitte versuchen Sie ein klareres Bild.',
+                errorDuringRecognition: 'Fehler während der Erkennung',
+                nameLabel: 'Name',
+                scientificNameLabel: 'Wissenschaftlicher Name',
+                errorAuthFailed: 'Authentifizierung fehlgeschlagen, bitte aktualisieren Sie die Seite.',
+                errorFirebaseInit: 'Firebase-Initialisierung fehlgeschlagen.',
+                languageName: 'Deutsch',
+                translatingContent: 'Inhalt wird übersetzt...',
+            },
+            'es': {
+                appName: 'Identificador de Vida Marina',
+                uploadButton: 'Subir Foto e Identificar',
+                identifying: 'Identificando...',
+                moreImagesButton: 'Más imágenes',
+                generatingImages: 'Generando imágenes...',
+                noImageSelected: 'No se ha seleccionado ninguna imagen.',
+                apiError: 'La solicitud de API falló',
+                recognitionFailed: 'Fallo de reconocimiento',
+                noMarineLife: 'No se pudo identificar vida marina. Por favor, intente una imagen más clara.',
+                errorDuringRecognition: 'Error durante el reconocimiento',
+                nameLabel: 'Nombre',
+                scientificNameLabel: 'Nombre Científico',
+                errorAuthFailed: 'Autenticación fallida, por favor actualice la página.',
+                errorFirebaseInit: 'Fallo al inicializar Firebase.',
+                languageName: 'Español',
+                translatingContent: 'Traduciendo contenido...',
+            },
+            'ko': {
+                appName: '해양 생물 식별기',
+                uploadButton: '사진 업로드 및 식별',
+                identifying: '식별 중...',
+                moreImagesButton: '더 많은 이미지',
+                generatingImages: '이미지 생성 중...',
+                noImageSelected: '선택된 이미지가 없습니다。',
+                apiError: 'API 요청 실패',
+                recognitionFailed: '식별 실패',
+                noMarineLife: '해양 생물을 식별할 수 없습니다. 더 선명한 이미지를 시도하십시오。',
+                errorDuringRecognition: '식별 중 오류 발생',
+                nameLabel: '이름',
+                scientificNameLabel: '학명',
+                errorAuthFailed: '인증 실패, 페이지를 새로 고치십시오。',
+                errorFirebaseInit: 'Firebase 초기화 실패。',
+                languageName: '한국어',
+                translatingContent: '콘텐츠 번역 중...',
+            },
+            'ru': {
+                appName: 'Идентификатор морской жизни',
+                uploadButton: 'Загрузить фото и идентифицировать',
+                identifying: 'Идентификация...',
+                moreImagesButton: 'Больше изображений',
+                generatingImages: 'Генерация изображений...',
+                noImageSelected: 'Изображение не выбрано.',
+                apiError: 'Сбой запроса API',
+                recognitionFailed: 'Ошибка распознавания',
+                noMarineLife: 'Не удалось определить морскую жизнь. Пожалуйста, попробуйте более четкое изображение.',
+                errorDuringRecognition: 'Ошибка во время распознавания',
+                nameLabel: 'Имя',
+                scientificNameLabel: 'Научное название',
+                errorAuthFailed: 'Ошибка аутентификации, пожалуйста, обновите страницу。',
+                errorFirebaseInit: 'Ошибка инициализации Firebase.',
+                languageName: 'Русский',
+                translatingContent: 'Перевод содержимого...',
+            }
+        };
+
+        // Global state variables
+        let selectedImage = null;
+        let imagePreviewUrl = null;
+        let recognitionResultData = null; // Stores raw JSON result from initial recognition
+        let translatedDisplayContent = { name: '', description: '' }; // Stores dynamically translated name/description
+        let loadingState = false;
+        let errorMessageContent = '';
+        let moreImagesArray = []; // Stores URLs of generated images
+        let generatingImages = false; // State for image generation loading
+        let translatingContent = false; // State for content translation loading
+
+        let currentLocale = 'zh'; // Default language is Chinese
+
+        let userId = null; // Firebase user ID
+        let db = null;
+        let auth = null;
+        let isAuthReady = false;
+
+        // DOM element references
+        const appContainer = document.getElementById('app-container'); // Reference to the main app container
+        const appNameElement = document.querySelector('h1');
+        const languageSelector = document.getElementById('language-selector');
+        const imageUploadInput = document.getElementById('image-upload');
+        const uploadRecognizeBtn = document.getElementById('upload-recognize-btn');
+        const uploadRecognizeText = document.getElementById('upload-recognize-text');
+        const uploadRecognizeSpinner = document.getElementById('upload-recognize-spinner');
+        const imagePreviewContainer = document.getElementById('image-preview-container');
+        const imagePreviewElement = document.getElementById('image-preview');
+        const errorMessageElement = document.getElementById('error-message');
+        const recognitionResultDisplay = document.getElementById('recognition-result-display');
+        const recognitionLoadingText = document.getElementById('recognition-loading-text');
+        const recognitionTextContentDiv = document.getElementById('recognition-text-content'); // Reference for the structured content div
+        const marineLifeNameElement = document.getElementById('marine-life-name');
+        const marineLifeScientificNameElement = document.getElementById('marine-life-scientific-name');
+        const marineLifeDescriptionElement = document.getElementById('marine-life-description');
+        const moreImagesBtn = document.getElementById('more-images-btn');
+        const moreImagesText = document.getElementById('more-images-text');
+        const moreImagesSpinner = document.getElementById('more-images-spinner');
+        const moreImagesDisplay = document.getElementById('more-images-display');
+
+        // Helper function to get translated text
+        const t = (key, locale) => {
+            return translations[locale][key] || key; // Fallback to key if translation is missing
+        };
+
+        // Helper function to update UI based on state
+        const updateUI = () => {
+            // Adjust app-container top margin based on image presence
+            if (imagePreviewUrl) {
+                appContainer.classList.add('top-aligned');
+            } else {
+                appContainer.classList.remove('top-aligned');
+            }
+
+            // Update App Name
+            appNameElement.textContent = t('appName', currentLocale);
+
+            // Update Upload/Recognize Button
+            uploadRecognizeBtn.classList.toggle('loading', loadingState); // Add/remove loading class
+            uploadRecognizeText.textContent = t('uploadButton', currentLocale); // Always update text content
+            uploadRecognizeBtn.disabled = loadingState || !isAuthReady || generatingImages || translatingContent;
+            uploadRecognizeBtn.classList.toggle('bg-gradient-to-r', !uploadRecognizeBtn.disabled);
+            uploadRecognizeBtn.classList.toggle('from-teal-500', !uploadRecognizeBtn.disabled);
+            uploadRecognizeBtn.classList.toggle('to-blue-600', !uploadRecognizeBtn.disabled);
+            uploadRecognizeBtn.classList.toggle('hover:from-teal-600', !uploadRecognizeBtn.disabled);
+            uploadRecognizeBtn.classList.toggle('hover:to-blue-700', !uploadRecognizeBtn.disabled);
+            uploadRecognizeBtn.classList.toggle('hover:scale-105', !uploadRecognizeBtn.disabled);
+            uploadRecognizeBtn.classList.toggle('shadow-lg', !uploadRecognizeBtn.disabled);
+            uploadRecognizeBtn.classList.toggle('bg-gray-400', uploadRecognizeBtn.disabled);
+            uploadRecognizeBtn.classList.toggle('cursor-not-allowed', uploadRecognizeBtn.disabled);
+
+
+            // Update Image Preview
+            if (imagePreviewUrl) {
+                imagePreviewElement.src = imagePreviewUrl;
+                imagePreviewContainer.classList.remove('hidden');
+            } else {
+                imagePreviewContainer.classList.add('hidden');
+            }
+
+            // Update Error Message
+            if (errorMessageContent) {
+                errorMessageElement.textContent = errorMessageContent;
+                errorMessageElement.classList.remove('hidden');
+            } else {
+                errorMessageElement.classList.add('hidden');
+            }
+
+            // Update Recognition Result Display
+            if (recognitionResultData && !recognitionResultData.error) {
+                recognitionResultDisplay.classList.remove('hidden');
+
+                if (translatingContent) {
+                    recognitionLoadingText.classList.remove('hidden');
+                    recognitionTextContentDiv.classList.add('hidden'); // Hide structured content
+                    // Removed text update for translatingContent to only show spinner
+                } else {
+                    recognitionLoadingText.classList.add('hidden');
+                    recognitionTextContentDiv.classList.remove('hidden'); // Show structured content
+
+                    marineLifeNameElement.innerHTML = `<span class="font-semibold">${t('nameLabel', currentLocale)}:</span> ${translatedDisplayContent.name}`;
+                    marineLifeScientificNameElement.innerHTML = `<span class="font-semibold">${t('scientificNameLabel', currentLocale)}:</span> ${recognitionResultData.scientificName}`;
+                    marineLifeDescriptionElement.innerHTML = translatedDisplayContent.description;
+                }
+
+                // Update More Images Button
+                moreImagesBtn.classList.toggle('loading', generatingImages); // Add/remove loading class
+                moreImagesText.textContent = t('moreImagesButton', currentLocale); // Always update text content
+                moreImagesBtn.disabled = generatingImages || !isAuthReady || loadingState || translatingContent;
+                moreImagesBtn.classList.toggle('bg-gradient-to-r', !moreImagesBtn.disabled);
+                moreImagesBtn.classList.toggle('from-purple-500', !moreImagesBtn.disabled);
+                moreImagesBtn.classList.toggle('to-pink-600', !moreImagesBtn.disabled);
+                moreImagesBtn.classList.toggle('hover:from-purple-600', !moreImagesBtn.disabled);
+                moreImagesBtn.classList.toggle('hover:to-pink-700', !moreImagesBtn.disabled);
+                moreImagesBtn.classList.toggle('hover:scale-105', !moreImagesBtn.disabled);
+                moreImagesBtn.classList.toggle('shadow-lg', !moreImagesBtn.disabled);
+                moreImagesBtn.classList.toggle('bg-gray-400', moreImagesBtn.disabled);
+                moreImagesBtn.classList.toggle('cursor-not-allowed', moreImagesBtn.disabled);
+
+            } else {
+                recognitionResultDisplay.classList.add('hidden');
+            }
+
+            // Update Generated More Images Display
+            if (moreImagesArray.length > 0) {
+                moreImagesDisplay.classList.remove('hidden');
+                moreImagesDisplay.innerHTML = ''; // Clear previous images
+                moreImagesArray.forEach((imgSrc, index) => {
+                    const imgDiv = document.createElement('div');
+                    imgDiv.className = 'rounded-lg overflow-hidden shadow-md';
+                    imgDiv.innerHTML = `<img src="${imgSrc}" alt="${t('moreImagesButton', currentLocale)} ${index + 1}" class="w-full h-full object-cover transition-transform duration-300 hover:scale-105" />`;
+                    moreImagesDisplay.appendChild(imgDiv);
+                });
+            } else {
+                moreImagesDisplay.classList.add('hidden');
+            }
+
+            // Update Recognition Error from LLM (if applicable)
+            if (recognitionResultData && recognitionResultData.error) {
+                errorMessageElement.textContent = recognitionResultData.error;
+                errorMessageElement.classList.remove('hidden');
+            }
+        };
+
+        // Helper function for LLM-based translation
+        const translateText = async (text, targetLocale) => {
+            if (!text || !targetLocale) return text;
+
+            const translationPrompt = `Translate the following text into ${translations[targetLocale].languageName}. Provide only the translated text, without any introductory phrases, conversational responses, or explanations. Just the translated text. Original text: "${text}"`;
+            const payload = {
+                contents: [{ role: "user", parts: [{ text: translationPrompt }] }],
+            };
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Translation API failed: ${response.status} - ${errorData.message || response.statusText}`);
+                }
+
+                const result = await response.json();
+                if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) {
+                    return result.candidates[0].content.parts[0].text.trim();
+                }
+                return text;
+            } catch (error) {
+                console.error("Error during translation API call:", error);
+                return text;
+            }
+        };
+
+        // Function to perform translation of recognition result
+        const performRecognitionTranslation = async () => {
+            if (recognitionResultData && recognitionResultData.name && recognitionResultData.description) {
+                translatingContent = true;
+                updateUI(); // Show translation loading spinner
+                try {
+                    const translatedName = await translateText(recognitionResultData.name, currentLocale);
+                    const translatedDescription = await translateText(recognitionResultData.description, currentLocale);
+
+                    translatedDisplayContent = {
+                        name: translatedName,
+                        description: translatedDescription
+                    };
+                } catch (error) {
+                    console.error("Error translating content:", error);
+                    translatedDisplayContent = {
+                        name: recognitionResultData.name,
+                        description: recognitionResultData.description
+                    };
+                } finally {
+                    translatingContent = false;
+                    updateUI(); // Hide translation loading and update content
+                }
+            } else {
+                translatedDisplayContent = { name: '', description: '' };
+                updateUI();
+            }
+        };
+
+        // Convert image file to Base64 string
+        const imageToBase64 = (file) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64String = reader.result.split(',')[1]; // Extract Base64 part
+                    resolve(base64String);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file); // Read file as Data URL
+            });
+        };
+
+        // Sends the selected image to Gemini API for recognition
+        const identifyMarineLife = async (fileToIdentify) => {
+            if (!fileToIdentify) {
+                errorMessageContent = t('noImageSelected', currentLocale);
+                updateUI();
+                return;
+            }
+
+            loadingState = true;
+            errorMessageContent = '';
+            recognitionResultData = null;
+            moreImagesArray = [];
+            translatedDisplayContent = { name: '', description: '' };
+            updateUI(); // Update UI to show loading state
+
+            try {
+                const base64ImageData = await imageToBase64(fileToIdentify);
+                const promptText = `Identify the marine life in this image. Please provide its name, scientific name, and a brief description.
+- The name should be in ${translations[currentLocale].languageName}.
+- The scientific name should be in English.
+- The description should be in ${translations[currentLocale].languageName}.
+Return the result in JSON format, containing 'name', 'scientificName', and 'description'.
+If there's no obvious marine life in the image, return a JSON object like { "error": "${t('noMarineLife', currentLocale)}" }.`;
+
+
+                const payload = {
+                    contents: [
+                        {
+                            role: "user",
+                            parts: [
+                                { text: promptText },
+                                {
+                                    inlineData: {
+                                        mimeType: fileToIdentify.type,
+                                        data: base64ImageData
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "OBJECT",
+                            properties: {
+                                "name": { "type": "STRING" },
+                                "scientificName": { "type": "STRING" },
+                                "description": { "type": "STRING" }
+                            },
+                            "propertyOrdering": ["name", "scientificName", "description"]
+                        }
+                    }
+                };
+
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`${t('apiError', currentLocale)}: ${response.status} - ${errorData.message || response.statusText}`);
+                }
+
+                const result = await response.json();
+                let parsedResult;
+
+                try {
+                    parsedResult = JSON.parse(result.candidates[0].content.parts[0].text);
+                } catch (jsonError) {
+                    console.error("JSON parse failed:", jsonError);
+                    recognitionResultData = { error: t('recognitionFailed', currentLocale) };
+                    updateUI();
+                    return;
+                }
+
+                if (parsedResult && parsedResult.name && parsedResult.scientificName && parsedResult.description) {
+                    recognitionResultData = parsedResult;
+                    // Trigger translation immediately after successful recognition
+                    performRecognitionTranslation();
+                } else if (parsedResult && parsedResult.error) {
+                    recognitionResultData = { error: parsedResult.error };
+                } else {
+                    recognitionResultData = { error: t('noMarineLife', currentLocale) };
+                }
+            } catch (error) {
+                console.error('Recognition failed:', error);
+                errorMessageContent = `${t('errorDuringRecognition', currentLocale)}: ${error.message}`;
+                recognitionResultData = null;
+            } finally {
+                loadingState = false;
+                updateUI(); // Ensure UI updates to reflect end of loading
+            }
+        };
+
+        // Function to generate more images using Imagen-3.0
+        const generateMoreImages = async () => {
+            const marineLifeName = translatedDisplayContent.name || (recognitionResultData ? recognitionResultData.name : '');
+
+            if (!marineLifeName) {
+                errorMessageContent = t('noMarineLife', currentLocale);
+                updateUI();
+                return;
+            }
+
+            generatingImages = true;
+            errorMessageContent = '';
+            moreImagesArray = [];
+            updateUI(); // Show image generation loading state
+
+            try {
+                const prompt = `A high-quality, realistic photograph of a ${marineLifeName} in its natural habitat.`;
+                const payload = { instances: { prompt: prompt }, parameters: { "sampleCount": 4 } };
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`${t('apiError', currentLocale)}: ${response.status} - ${errorData.message || response.statusText}`);
+                }
+
+                const result = await response.json();
+                if (result.predictions && result.predictions.length > 0) {
+                    const imageUrls = result.predictions.map(pred => `data:image/png;base64,${pred.bytesBase64Encoded}`);
+                    moreImagesArray = imageUrls;
+                } else {
+                    errorMessageContent = t('noMarineLife', currentLocale); // Re-use noMarineLife for failure to generate images
+                }
+            } catch (error) {
+                console.error('Image generation failed:', error);
+                errorMessageContent = `${t('errorDuringRecognition', currentLocale)}: ${error.message}`;
+            } finally {
+                generatingImages = false;
+                updateUI(); // Hide image generation loading state
+            }
+        };
+
+        // Initialize Firebase and set up event listeners when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Set initial locale to Chinese
+            currentLocale = 'zh';
+
+            // Populate language selector
+            const langCodes = [
+                { code: 'zh', flag: '🇨🇳' },
+                { code: 'en', flag: '🇺🇸' },
+                { code: 'ja', flag: '🇯🇵' },
+                { code: 'de', flag: '🇩🇪' },
+                { code: 'es', flag: '🇪🇸' },
+                { code: 'ko', flag: '🇰🇷' },
+                { code: 'ru', flag: '🇷🇺' },
+            ];
+
+            langCodes.forEach(lang => {
+                const button = document.createElement('button');
+                button.textContent = lang.flag;
+                // `text-base` (1rem / 16px) is a 60% increase from text-[0.6rem] (9.6px) - effectively +50% from text-xs (12px)
+                // Using text-base for flag icons as per current request for +50% increase from previous 0.6rem.
+                button.className = `p-1.5 rounded-full text-base transition-transform transform hover:scale-110 ${
+                    currentLocale === lang.code ? 'ring-2 ring-blue-500' : ''
+                }`;
+                button.title = t('languageName', lang.code);
+                button.addEventListener('click', () => {
+                    currentLocale = lang.code;
+                    // Update button active state
+                    document.querySelectorAll('#language-selector button').forEach(btn => btn.classList.remove('ring-2', 'ring-blue-500'));
+                    button.classList.add('ring-2', 'ring-blue-500');
+                    // Re-translate content if recognition result exists
+                    if (recognitionResultData && !recognitionResultData.error) {
+                        performRecognitionTranslation();
+                    }
+                    updateUI(); // Re-render all UI elements
+                });
+                languageSelector.appendChild(button);
+            });
+
+            // Initialize Firebase
+            try {
+                const firebaseConfig = typeof __firebase_config !== 'undefined'
+                    ? JSON.parse(__firebase_config)
+                    : {};
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app); // Assign to global db
+                auth = getAuth(app); // Assign to global auth
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (!user) {
+                        try {
+                            if (typeof __initial_auth_token !== 'undefined') {
+                                await signInWithCustomToken(auth, __initial_auth_token);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                        } catch (error) {
+                            console.error('Firebase authentication failed:', error);
+                            errorMessageContent = t('errorAuthFailed', currentLocale);
+                            updateUI();
+                        }
+                    }
+                    userId = auth.currentUser?.uid || crypto.randomUUID();
+                    isAuthReady = true;
+                    console.log('Firebase user ID:', userId);
+                    updateUI(); // Update UI after auth state is ready
+                });
+            } catch (error) {
+                console.error('Failed to initialize Firebase:', error);
+                errorMessageContent = t('errorFirebaseInit', currentLocale);
+                updateUI();
+            }
+
+            // Event Listeners for buttons and input
+            uploadRecognizeBtn.addEventListener('click', () => {
+                imageUploadInput.click(); // Trigger hidden file input click
+            });
+
+            imageUploadInput.addEventListener('change', async (event) => {
+                if (event.target.files && event.target.files[0]) {
+                    const file = event.target.files[0];
+                    selectedImage = file;
+                    imagePreviewUrl = URL.createObjectURL(file);
+                    recognitionResultData = null;
+                    errorMessageContent = '';
+                    moreImagesArray = [];
+                    translatedDisplayContent = { name: '', description: '' };
+                    updateUI(); // Clear previous state and show preview
+
+                    await identifyMarineLife(file); // Immediately start identification
+                }
+            });
+
+            moreImagesBtn.addEventListener('click', generateMoreImages);
+
+            // Initial UI render
+            updateUI();
+        });
+    </script>
+</body>
+</html>
+
